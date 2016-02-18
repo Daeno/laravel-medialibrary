@@ -26,7 +26,8 @@
     "illuminate/support": "^5.1|^5.2",
     "spatie/laravel-glide": "^2.2.4",
     "spatie/pdf-to-image": "^1.0",
-    "spatie/string": "^2.0"
+    "spatie/string": "^2.0",
+    "phpoffice/phpword": "v0.13.*"
 
   },
   "require-dev": {
