@@ -73,7 +73,9 @@ class FileManipulator
         }
 
         if ($media->type == Media::TYPE_WORD) {
-            $copiedOriginalFile = $this->convertWORDToImage($copiedOriginalFile);
+            $copiedOriginalFile = $this->convertWORDToPDF($copiedOriginalFile);
+            app(Filesystem::class)->copyToMediaLibrary($copiedOriginalFile, $media, true);
+            $copiedOriginalFile = $this->convertPDFToImage($copiedOriginalFile);
         }
 
         foreach ($conversions as $conversion) {
@@ -149,28 +151,16 @@ class FileManipulator
      *
      * @return string
      */
-    protected function convertWORDToImage($wordFile)
+    protected function convertWordToPDF($wordFile)
     {
-        $imageFile = string($wordFile)->pop('.').'.jpg';
         $pdfFile = string($wordFile)->pop('.').'.pdf';
-        // \PhpOffice\PhpWord\Settings::setPdfRendererPath(realpath(__DIR__) . '/../vendor/dompdf/dompdf');
-        // \PhpOffice\PhpWord\Settings::setPdfRendererName('DomPDF');
-        //
-        // defined('DOMPDF_ENABLE_AUTOLOAD') or define('DOMPDF_ENABLE_AUTOLOAD', false);
-        // defined("DOMPDF_UNICODE_ENABLED") or define("DOMPDF_UNICODE_ENABLED", true);
-        // require(realpath(__DIR__) . '/../vendor/dompdf/dompdf/dompdf_config.inc.php');
-        // //defined("DOMPDF_AUTOLOAD_PREPEND") or define("DOMPDF_AUTOLOAD_PREPEND", true);
-        // //require_once(realpath(__DIR__) . '/../vendor/dompdf/dompdf/include/autoload.inc.php');
-        // $phpWord = \PhpOffice\PhpWord\IOFactory::load($wordFile);
-        // $xmlWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord , 'PDF');
-        // $xmlWriter->save('temp.pdf');
+
         exec('unoconv -f pdf ' . $wordFile);
         if(!file_exists($pdfFile)){
           exec('unoconv -f pdf ' . $wordFile);
         }
-        (new Pdf($pdfFile))->saveImage($imageFile);
 
-        return $imageFile;
+        return $pdfFile;
     }
 
     /**
