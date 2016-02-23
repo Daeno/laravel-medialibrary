@@ -34,6 +34,8 @@ class GetTypeTest extends TestCase
                 ['png', Media::TYPE_IMAGE],
                 ['gif', Media::TYPE_IMAGE],
                 ['pdf', Media::TYPE_PDF],
+                ['docx', Media::TYPE_WORD],
+                ['doc', Media::TYPE_WORD],
                 ['bla', Media::TYPE_OTHER],
             ];
 
