@@ -157,7 +157,7 @@ class FileManipulator
     {
         $pdfFile = string($wordFile)->pop('.').'.pdf';
 
-        exec('unoconv -f pdf ' . $wordFile);
+        exec('unoconv -f pdf ' . $wordFile . ' 2> /dev/null');
         if(!file_exists($pdfFile)){
           exec('unoconv -f pdf ' . $wordFile);
         }
