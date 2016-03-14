@@ -20,6 +20,8 @@ return [
      */
     'queue_name' => '',
 
+    'unoconv_url' => '172.21.0.2:3000/unoconv/pdf',
+
     /*
      * The class name of the media model to be used.
      */
