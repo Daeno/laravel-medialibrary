@@ -157,15 +157,7 @@ class FileManipulator
     {
         $pdfFile = string($wordFile)->pop('.').'.pdf';
         $file_name_fpath = realpath($wordFile);
-        // $payload = array('file' => '@'.$file_name_fpath);
-        // $ch = curl_init();
-        // curl_setopt($ch, CURLOPT_URL, config('laravel-medialibrary.unoconv_url'));
-        // curl_setopt($ch, CURLOPT_POST,1);
-        // curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        // $result=curl_exec ($ch);
-        // curl_close ($ch);
-        var_dump($file_name_fpath);
-        exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile);
+        exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile . ' 2> /dev/null');
         return $pdfFile;
     }
 
