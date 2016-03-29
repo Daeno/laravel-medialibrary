@@ -43,6 +43,21 @@ class FileManipulator
             return;
         }
 
+        if ($media->type == Media::TYPE_VIDEO) {
+            $tempDirectory = $this->createTempDirectory();
+
+            $copiedOriginalFile = $tempDirectory.'/'.str_random(16).'.'.$media->extension;
+
+            app(Filesystem::class)->copyFromMediaLibrary($media, $copiedOriginalFile);
+
+            if(!file_exists($tempDirectory.'/thumb.mp4')){
+              $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
+              app(Filesystem::class)->copyToMediaLibrary($copiedOriginalFile, $media, true, 'thumb.mp4');
+            }
+            $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
+            return;
+        }
+
         $profileCollection = ConversionCollectionFactory::createForMedia($media);
 
         $this->performConversions($profileCollection->getNonQueuedConversions($media->collection_name), $media);
@@ -78,15 +93,6 @@ class FileManipulator
               app(Filesystem::class)->copyToMediaLibrary($copiedOriginalFile, $media, true, 'thumb.pdf');
             }
             $copiedOriginalFile = $this->convertPDFToImage($copiedOriginalFile);
-        }
-
-        if ($media->type == Media::TYPE_VIDEO) {
-            if(!file_exists($tempDirectory.'/thumb.mp4')){
-              $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
-              app(Filesystem::class)->copyToMediaLibrary($copiedOriginalFile, $media, true, 'thumb.mp4');
-            }
-            $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
-            return ;
         }
 
         foreach ($conversions as $conversion) {
