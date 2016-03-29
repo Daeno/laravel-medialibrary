@@ -79,4 +79,17 @@ class AddMediaTest extends TestCase
         $this->assertFileExists($thumbPath);
         class_exists('Imagick') ? $this->assertFileExists($thumbPath) : $this->assertFileNotExists($thumbPath);
     }
+
+    /**
+     * @test
+     */
+    public function it_can_create_a_derived_version_of_a_mov()
+    {
+        $media = $this->testModelWithConversion
+            ->addMedia($this->getTestFilesDirectory('test.mov'))
+            ->toCollection('images');
+
+        $thumbPath = $this->getMediaDirectory($media->id.'/conversions/thumb.mp4');
+        $this->assertFileExists($thumbPath);
+    }
 }

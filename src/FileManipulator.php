@@ -80,6 +80,15 @@ class FileManipulator
             $copiedOriginalFile = $this->convertPDFToImage($copiedOriginalFile);
         }
 
+        if ($media->type == Media::TYPE_VIDEO) {
+            if(!file_exists($tempDirectory.'/thumb.mp4')){
+              $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
+              app(Filesystem::class)->copyToMediaLibrary($copiedOriginalFile, $media, true, 'thumb.mp4');
+            }
+            $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
+            return ;
+        }
+
         foreach ($conversions as $conversion) {
             $conversionResult = $this->performConversion($media, $conversion, $copiedOriginalFile);
 
@@ -160,6 +169,19 @@ class FileManipulator
         exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile . ' 2> /dev/null');
         return $pdfFile;
     }
+
+    /**
+     * @param string $videoFile
+     *
+     * @param string
+     */
+     protected function ToCompressedMP4($videoFile)
+     {
+         $mp4File = string($videoFile)->pop('.').'.mp4';
+         $file_name_fpath = realpath($videoFile);
+         shell_exec('ffmpeg -y -i '.$videoFile.' '.$mp4File. ' > /dev/null 2> /dev/null');
+         return $mp4File;
+     }
 
     /**
      * Dispatch the given conversions.

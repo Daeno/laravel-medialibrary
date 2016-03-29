@@ -15,6 +15,7 @@ class Media extends Model
     const TYPE_IMAGE = 'image';
     const TYPE_WORD = 'ms word';
     const TYPE_PDF = 'pdf';
+    const TYPE_VIDEO = 'video';
 
     protected $guarded = ['id', 'disk', 'file_name', 'size', 'model_type', 'model_id'];
 
@@ -101,6 +102,10 @@ class Media extends Model
 
         if (in_array($extension, ['doc', 'docx'])) {
             return static::TYPE_WORD;
+        }
+
+        if(in_array($extension, ['mp4', 'mov', 'wmv', 'mpg', 'avi', 'mpeg'])) {
+            return static::TYPE_VIDEO;
         }
 
         return static::TYPE_OTHER;
