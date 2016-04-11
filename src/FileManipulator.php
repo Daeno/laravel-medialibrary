@@ -89,7 +89,7 @@ class FileManipulator
         if ($media->type == Media::TYPE_WORD) {
             $pdfFile = $tempDirectory.'/thumb.pdf';
             if (!file_exists($pdfFile)) {
-                $this->convertWordToPDF($copiedOriginalFile, $pdf);
+                $this->convertWordToPDF($copiedOriginalFile, $pdfFile);
                 app(Filesystem::class)->copyToMediaLibrary($pdfFile, $media, true, 'thumb.pdf');
             }
             $copiedOriginalFile = $this->convertPDFToImage($pdfFile);
