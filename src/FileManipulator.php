@@ -43,21 +43,6 @@ class FileManipulator
             return;
         }
 
-        if ($media->type == Media::TYPE_VIDEO) {
-            $tempDirectory = $this->createTempDirectory();
-
-            $copiedOriginalFile = $tempDirectory.'/'.str_random(16).'.'.$media->extension;
-
-            app(Filesystem::class)->copyFromMediaLibrary($media, $copiedOriginalFile);
-
-            if(!file_exists($tempDirectory.'/thumb.mp4')){
-              $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
-              app(Filesystem::class)->copyToMediaLibrary($copiedOriginalFile, $media, true, 'thumb.mp4');
-            }
-            $copiedOriginalFile = $this->ToCompressedMP4($copiedOriginalFile);
-            return;
-        }
-
         $profileCollection = ConversionCollectionFactory::createForMedia($media);
 
         $this->performConversions($profileCollection->getNonQueuedConversions($media->collection_name), $media);
@@ -77,6 +62,10 @@ class FileManipulator
      */
     public function performConversions(ConversionCollection $conversions, Media $media)
     {
+        if (count($conversions) == 0) {
+            return;
+        }
+
         $tempDirectory = $this->createTempDirectory();
 
         $copiedOriginalFile = $tempDirectory.'/'.str_random(16).'.'.$media->extension;
@@ -87,12 +76,23 @@ class FileManipulator
             $copiedOriginalFile = $this->convertPDFToImage($copiedOriginalFile);
         }
 
-        if ($media->type == Media::TYPE_WORD) {
-            if(!file_exists($tempDirectory.'/thumb.pdf')){
-              $copiedOriginalFile = $this->convertWORDToPDF($copiedOriginalFile);
-              app(Filesystem::class)->copyToMediaLibrary($copiedOriginalFile, $media, true, 'thumb.pdf');
+        if ($media->type == Media::TYPE_VIDEO) {
+            $compressedMP4File = $tempDirectory.'/thumb.mp4';
+            if (!file_exists($compressedMP4File)) {
+                $this->toCompressedMP4($copiedOriginalFile, $compressedMP4File);
             }
-            $copiedOriginalFile = $this->convertPDFToImage($copiedOriginalFile);
+            app(Filesystem::class)->copyToMediaLibrary($compressedMP4File, $media, true, 'thumb.mp4');
+            File::deleteDirectory($tempDirectory);
+            return;
+        }
+
+        if ($media->type == Media::TYPE_WORD) {
+            $pdfFile = $tempDirectory.'/thumb.pdf';
+            if (!file_exists($pdfFile)) {
+                $this->convertWordToPDF($copiedOriginalFile, $pdf);
+                app(Filesystem::class)->copyToMediaLibrary($pdfFile, $media, true, 'thumb.pdf');
+            }
+            $copiedOriginalFile = $this->convertPDFToImage($pdfFile);
         }
 
         foreach ($conversions as $conversion) {
@@ -168,12 +168,17 @@ class FileManipulator
      *
      * @return string
      */
-    protected function convertWordToPDF($wordFile)
+    protected function convertWordToPDF($wordFile, $pdfFile)
     {
-        $pdfFile = string($wordFile)->pop('.').'.pdf';
         $file_name_fpath = realpath($wordFile);
-        exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile . ' 2> /dev/null');
-        return $pdfFile;
+
+        exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile);
+
+        if (!file_exists($pdfFile)) {
+            throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
+                sprintf('Convert word to pdf failed. Input: %s, Output: %s',
+                $file_name_fpath, $pdfFile));
+        }
     }
 
     /**
@@ -181,13 +186,18 @@ class FileManipulator
      *
      * @param string
      */
-     protected function ToCompressedMP4($videoFile)
-     {
-         $mp4File = string($videoFile)->pop('.').'.mp4';
-         $file_name_fpath = realpath($videoFile);
-         shell_exec('ffmpeg -y -i '.$videoFile.' '.$mp4File. ' > /dev/null 2> /dev/null');
-         return $mp4File;
-     }
+    protected function toCompressedMP4($videoFile, $mp4File)
+    {
+        $file_name_fpath = realpath($videoFile);
+        exec('ffmpeg -y -i '.$videoFile.' '.$mp4File .  ' > /dev/null 2> /dev/null');
+
+        if (!file_exists($mp4File)) {
+            throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
+                sprintf('Convert compressed MP4 failed. Input: %s, Output: %s',
+                    $videoFile, $mp4File)
+            );
+        }
+    }
 
     /**
      * Dispatch the given conversions.
