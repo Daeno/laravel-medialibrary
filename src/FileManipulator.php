@@ -189,7 +189,18 @@ class FileManipulator
     protected function toCompressedMP4($videoFile, $mp4File)
     {
         $file_name_fpath = realpath($videoFile);
-        exec('ffmpeg -y -i '.$videoFile.' '.$mp4File .  ' > /dev/null 2> /dev/null');
+
+        /**
+         * Use ffmpeg to compress videos.
+         * -y: to convert without asking. -c:v libx264: use H.264 codec
+         * -crf to compress it. 0 is loseless, 51 is worst, 23 is default. The lower the better.
+         * -b:v 512k: Use bit rates as 512k to compress.
+         * -c:a aac: use aac codec (compress suitable codec).
+         * See http://stackoverflow.com/questions/4490154/reducing-video-size-with-same-format-and-reducing-frame-size
+         */
+        exec('ffmpeg -y -i '.$videoFile.' -c:v libx264 -crf 24 -b:v 128k -b:a 64k -c:a aac '.$mp4File
+            .  ' > /dev/null 2> /dev/null'
+        );
 
         if (!file_exists($mp4File)) {
             throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
