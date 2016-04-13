@@ -174,10 +174,13 @@ class FileManipulator
 
         exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile);
 
-        if (!file_exists($pdfFile)) {
-            throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
-                sprintf('Convert word to pdf failed. Input: %s, Output: %s',
-                $file_name_fpath, $pdfFile));
+        // Less than 1kb than failed
+        if (!file_exists($pdfFile) || File::size($pdfFile) < 1000 ) {
+            $error_msg = sprintf('Convert word to pdf failed. Input: %s, Output: %s',
+                $file_name_fpath, $pdfFile);
+            // throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist($error_msg);
+            print_r($error_msg);
+            $this->convertWordToPDF($wordFile, $pdfFile);
         }
     }
 
