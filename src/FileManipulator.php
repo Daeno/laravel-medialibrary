@@ -78,20 +78,34 @@ class FileManipulator
 
         if ($media->type == Media::TYPE_VIDEO) {
             $compressedMP4File = $tempDirectory.'/thumb.mp4';
-            if (!file_exists($compressedMP4File)) {
-                $this->toCompressedMP4($copiedOriginalFile, $compressedMP4File);
-            }
+            $thumbFile = $tempDirectory.'/thumb.jpg';
+
+            $this->toCompressedMP4($copiedOriginalFile, $compressedMP4File, $thumbFile);
+
             app(Filesystem::class)->copyToMediaLibrary($compressedMP4File, $media, true, 'thumb.mp4');
+            app(Filesystem::class)->copyToMediaLibrary($thumbFile, $media, true, 'thumb.jpg');
             File::deleteDirectory($tempDirectory);
             return;
         }
 
         if ($media->type == Media::TYPE_WORD) {
             $pdfFile = $tempDirectory.'/thumb.pdf';
-            if (!file_exists($pdfFile)) {
+
+            // Less than 1kb than failed
+            for ($i = 0; (!file_exists($pdfFile) || File::size($pdfFile) < 1000) && $i < 10; $i++) {
                 $this->convertWordToPDF($copiedOriginalFile, $pdfFile);
-                app(Filesystem::class)->copyToMediaLibrary($pdfFile, $media, true, 'thumb.pdf');
+                if ($i > 0) {
+                    sleep(5);
+                }
+                if ($i == 9) {
+                    $error_msg = sprintf('Convert word to pdf failed.
+                        Input: %s, Output: %s',
+                        $copiedOriginalFile, $pdfFile);
+                    throw new \Spatie\MediaLibrary\Exceptions\FileDoesNotExist($error_msg);
+                }
             }
+
+            app(Filesystem::class)->copyToMediaLibrary($pdfFile, $media, true, 'thumb.pdf');
             $copiedOriginalFile = $this->convertPDFToImage($pdfFile);
         }
 
@@ -173,15 +187,6 @@ class FileManipulator
         $file_name_fpath = realpath($wordFile);
 
         exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile);
-
-        // Less than 1kb than failed
-        if (!file_exists($pdfFile) || File::size($pdfFile) < 1000 ) {
-            $error_msg = sprintf('Convert word to pdf failed. Input: %s, Output: %s',
-                $file_name_fpath, $pdfFile);
-            // throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist($error_msg);
-            print_r($error_msg);
-            $this->convertWordToPDF($wordFile, $pdfFile);
-        }
     }
 
     /**
@@ -189,10 +194,8 @@ class FileManipulator
      *
      * @param string
      */
-    protected function toCompressedMP4($videoFile, $mp4File)
+    protected function toCompressedMP4($videoFile, $mp4File, $thumbFile)
     {
-        $file_name_fpath = realpath($videoFile);
-
         /**
          * Use ffmpeg to compress videos.
          * -y: to convert without asking. -c:v libx264: use H.264 codec
@@ -209,6 +212,17 @@ class FileManipulator
             throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
                 sprintf('Convert compressed MP4 failed. Input: %s, Output: %s',
                     $videoFile, $mp4File)
+            );
+        }
+
+        exec('ffmpeg -y -i '.$videoFile.' -ss 00:00:03.000 -vframes 1 '.$thumbFile
+            .  ' > /dev/null 2> /dev/null'
+        );
+
+        if (!file_exists($thumbFile)) {
+            throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
+                sprintf('Convert MP4 thumbnail failed. Input: %s, Output: %s',
+                    $videoFile, $thumbFile)
             );
         }
     }
