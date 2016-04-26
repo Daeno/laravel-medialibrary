@@ -2,6 +2,7 @@
 
 namespace Spatie\MediaLibrary;
 
+use Illuminate\Database\Eloquent\Collection as DbCollection;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia\Interfaces\HasMedia;
 
@@ -25,17 +26,17 @@ class MediaRepository
      *
      * @param HasMedia       $model
      * @param string         $collectionName
-     * @param array|\Closure $filter
+     * @param array|callable $filter
      *
      * @return Collection
      */
-    public function getCollection(HasMedia $model, $collectionName, $filter = [])
+    public function getCollection(HasMedia $model, string $collectionName, $filter = []) : Collection
     {
         $mediaCollection = $this->loadMedia($model, $collectionName);
 
         $mediaCollection = $this->applyFilterToMediaCollection($mediaCollection, $filter);
 
-        return Collection::make($mediaCollection);
+        return collect($mediaCollection);
     }
 
     /**
@@ -46,7 +47,7 @@ class MediaRepository
      *
      * @return mixed
      */
-    protected function loadMedia(HasMedia $model, $collectionName)
+    protected function loadMedia(HasMedia $model, string $collectionName)
     {
         if ($this->mediaIsPreloaded($model)) {
             $media = $model->media->filter(function (Media $mediaItem) use ($collectionName) {
@@ -68,7 +69,7 @@ class MediaRepository
 
         $query = $model->media();
 
-        if ($collectionName != '') {
+        if ($collectionName !== '') {
             $query = $query->where('collection_name', $collectionName);
         }
 
@@ -79,14 +80,10 @@ class MediaRepository
         return $media;
     }
 
-    /**
+    /*
      * Determine if media is already preloaded on this model.
-     *
-     * @param HasMedia $model
-     *
-     * @return bool
      */
-    protected function mediaIsPreloaded(HasMedia $model)
+    protected function mediaIsPreloaded(HasMedia $model) : bool
     {
         return isset($model->media);
     }
@@ -95,11 +92,11 @@ class MediaRepository
      * Apply given filters on media.
      *
      * @param \Illuminate\Support\Collection $media
-     * @param array|\Closure                 $filter
+     * @param array|callable                 $filter
      *
      * @return Collection
      */
-    protected function applyFilterToMediaCollection(Collection $media, $filter)
+    protected function applyFilterToMediaCollection(Collection $media, $filter) : Collection
     {
         if (is_array($filter)) {
             $filter = $this->getDefaultFilterFunction($filter);
@@ -110,35 +107,32 @@ class MediaRepository
 
     /**
      * Get all media.
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function all()
+    public function all() : DbCollection
     {
         return $this->model->all();
     }
 
-    /**
+    /*
      * Get all media for the given type.
-     *
-     * @param string $modelType
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getByModelType($modelType)
+    public function getByModelType(string $modelType) : DbCollection
     {
         return $this->model->where('model_type', $modelType)->get();
     }
 
-    /**
-     * Get all media for the given type and collection name.
-     *
-     * @param string $modelType
-     * @param string $collectionName
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
+    /*
+     * Get media by ids.
      */
-    public function getByModelTypeAndCollectionName($modelType, $collectionName)
+    public function getByIds(array $ids) : DbCollection
+    {
+        return $this->model->whereIn('id', $ids)->get();
+    }
+
+    /*
+     * Get all media for the given type and collection name.
+     */
+    public function getByModelTypeAndCollectionName(string $modelType, string $collectionName) : DbCollection
     {
         return $this->model
             ->where('model_type', $modelType)
@@ -146,14 +140,10 @@ class MediaRepository
             ->get();
     }
 
-    /**
+    /*
      * Get all media for the given type and collection name.
-     *
-     * @param string $collectionName
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getByCollectionName($collectionName)
+    public function getByCollectionName(string $collectionName) : DbCollection
     {
         return $this->model
             ->where('collection_name', $collectionName)
@@ -167,7 +157,7 @@ class MediaRepository
      *
      * @return \Closure
      */
-    protected function getDefaultFilterFunction($filters)
+    protected function getDefaultFilterFunction(array $filters)
     {
         return function (Media $media) use ($filters) {
 

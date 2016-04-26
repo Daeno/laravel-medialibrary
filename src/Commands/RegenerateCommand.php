@@ -3,9 +3,11 @@
 namespace Spatie\MediaLibrary\Commands;
 
 use Illuminate\Console\Command;
-use Spatie\MediaLibrary\FileManipulator;
-use Spatie\MediaLibrary\Media;
-use Spatie\MediaLibrary\MediaRepository;
+use Spatie\{
+    MediaLibrary\FileManipulator, 
+    MediaLibrary\Media, 
+    MediaLibrary\MediaRepository
+};
 
 class RegenerateCommand extends Command
 {
@@ -14,7 +16,7 @@ class RegenerateCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'medialibrary:regenerate {modelType?}';
+    protected $signature = 'medialibrary:regenerate {modelType?} {--ids=*}';
 
     /**
      * The console command description.
@@ -33,6 +35,12 @@ class RegenerateCommand extends Command
      */
     protected $fileManipulator;
 
+    /**
+     * RegenerateCommand constructor.
+     *
+     * @param MediaRepository $mediaRepository
+     * @param FileManipulator $fileManipulator
+     */
     public function __construct(MediaRepository $mediaRepository, FileManipulator $fileManipulator)
     {
         parent::__construct();
@@ -41,6 +49,9 @@ class RegenerateCommand extends Command
         $this->fileManipulator = $fileManipulator;
     }
 
+    /**
+     * Handle regeneration.
+     */
     public function handle()
     {
         $this->getMediaToBeRegenerated()->map(function (Media $media) {
@@ -51,12 +62,22 @@ class RegenerateCommand extends Command
         $this->info('All done!');
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
     public function getMediaToBeRegenerated()
     {
-        if ($this->argument('modelType') == '') {
+        $modelType = $this->argument('modelType') ?? '';
+        $mediaIds = $this->option('ids');
+
+        if ($modelType === '' && !$mediaIds) {
             return $this->mediaRepository->all();
         }
 
-        return $this->mediaRepository->getByModelType($this->argument('modelType'));
+        if ($mediaIds) {
+            return $this->mediaRepository->getByIds($mediaIds);
+        }
+
+        return $this->mediaRepository->getByModelType($modelType);
     }
 }

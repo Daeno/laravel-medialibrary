@@ -2,13 +2,11 @@
 
 namespace Spatie\MediaLibrary;
 
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Support\Facades\File;
 use Spatie\Glide\GlideImage;
 use Spatie\MediaLibrary\Conversion\Conversion;
 use Spatie\MediaLibrary\Conversion\ConversionCollection;
-use Spatie\MediaLibrary\Conversion\ConversionCollectionFactory;
 use Spatie\MediaLibrary\Events\ConversionHasBeenCompleted;
 use Spatie\MediaLibrary\Helpers\File as MediaLibraryFileHelper;
 use Spatie\MediaLibrary\Jobs\PerformConversions;
@@ -19,23 +17,13 @@ class FileManipulator
     use DispatchesJobs;
 
     /**
-     * @var \Illuminate\Contracts\Events\Dispatcher
-     */
-    protected $events;
-
-    public function __construct(Dispatcher $events)
-    {
-        $this->events = $events;
-    }
-
-    /**
      * Create all derived files for the given media.
      *
      * @param \Spatie\MediaLibrary\Media $media
      */
     public function createDerivedFiles(Media $media)
     {
-        if ($media->type == Media::TYPE_OTHER) {
+        if ($media->type === Media::TYPE_OTHER) {
             return;
         }
 
@@ -43,7 +31,7 @@ class FileManipulator
             return;
         }
 
-        $profileCollection = ConversionCollectionFactory::createForMedia($media);
+        $profileCollection = ConversionCollection::createForMedia($media);
 
         $this->performConversions($profileCollection->getNonQueuedConversions($media->collection_name), $media);
 
@@ -117,7 +105,7 @@ class FileManipulator
 
             app(Filesystem::class)->copyToMediaLibrary($renamedFile, $media, true);
 
-            $this->events->fire(new ConversionHasBeenCompleted($media, $conversion));
+            event(new ConversionHasBeenCompleted($media, $conversion));
         }
 
         File::deleteDirectory($tempDirectory);
@@ -132,7 +120,7 @@ class FileManipulator
      *
      * @return string
      */
-    public function performConversion(Media $media, Conversion $conversion, $copiedOriginalFile)
+    public function performConversion(Media $media, Conversion $conversion, string $copiedOriginalFile)
     {
         $conversionTempFile = pathinfo($copiedOriginalFile, PATHINFO_DIRNAME).'/'.string()->random(16).
             $conversion->getName().'.'.$media->extension;
@@ -140,21 +128,18 @@ class FileManipulator
         File::copy($copiedOriginalFile, $conversionTempFile);
 
         foreach ($conversion->getManipulations() as $manipulation) {
-            (new GlideImage())
-                ->load($conversionTempFile, $manipulation)
-                ->useAbsoluteSourceFilePath()
+            GlideImage::create($conversionTempFile)
+                ->modify($manipulation)
                 ->save($conversionTempFile);
         }
 
         return $conversionTempFile;
     }
 
-    /**
+    /*
      * Create a directory to store some working files.
-     *
-     * @return string
      */
-    public function createTempDirectory()
+    public function createTempDirectory() : string
     {
         $tempDirectory = storage_path('medialibrary/temp/'.str_random(16));
 
@@ -168,7 +153,7 @@ class FileManipulator
      *
      * @return string
      */
-    protected function convertPDFToImage($pdfFile)
+    protected function convertPDFToImage($pdfFile) : string
     {
         $imageFile = string($pdfFile)->pop('.').'.jpg';
 
@@ -229,9 +214,6 @@ class FileManipulator
 
     /**
      * Dispatch the given conversions.
-     *
-     * @param Media                $media
-     * @param ConversionCollection $queuedConversions
      */
     protected function dispatchQueuedConversions(Media $media, ConversionCollection $queuedConversions)
     {

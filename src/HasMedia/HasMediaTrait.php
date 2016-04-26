@@ -2,23 +2,36 @@
 
 namespace Spatie\MediaLibrary\HasMedia;
 
-use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\Conversion\Conversion;
 use Spatie\MediaLibrary\Events\CollectionHasBeenCleared;
-use Spatie\MediaLibrary\Exceptions\MediaDoesNotBelongToModel;
-use Spatie\MediaLibrary\Exceptions\MediaIsNotPartOfCollection;
-use Spatie\MediaLibrary\Exceptions\UrlCouldNotBeOpened;
+use Spatie\MediaLibrary\Exceptions\FileCannotBeAdded;
+use Spatie\Medialibrary\Exceptions\MediaCannotBeDeleted;
+use Spatie\Medialibrary\Exceptions\MediaCannotBeUpdated;
 use Spatie\MediaLibrary\FileAdder\FileAdderFactory;
 use Spatie\MediaLibrary\Filesystem;
+use Spatie\MediaLibrary\HasMedia\Interfaces\HasMedia;
 use Spatie\MediaLibrary\Media;
 use Spatie\MediaLibrary\MediaRepository;
 
 trait HasMediaTrait
 {
-    /**
-     * @var array
-     */
+    /** @var array */
     public $mediaConversions = [];
+
+    /** @var bool */
+    protected $deletePreservingMedia = false;
+
+    public static function bootHasMediaTrait()
+    {
+        static::deleted(function (HasMedia $entity) {
+            if (!$entity->deletePreservingMedia) {
+                $entity->media()->get()->map(function (Media $media) {
+                    $media->delete();
+                });
+            }
+        });
+    }
 
     /**
      * Set the polymorphic relation.
@@ -31,8 +44,7 @@ trait HasMediaTrait
     }
 
     /**
-     * Add a file to the medialibrary. The file will be removed from
-     * it's original location.
+     * Add a file to the medialibrary.
      *
      * @param string|\Symfony\Component\HttpFoundation\File\UploadedFile $file
      *
@@ -44,18 +56,30 @@ trait HasMediaTrait
     }
 
     /**
+     * Add a file from a request.
+     *
+     * @param string $key
+     *
+     * @return \Spatie\MediaLibrary\FileAdder\FileAdder
+     */
+    public function addMediaFromRequest(string $key)
+    {
+        return app(FileAdderFactory::class)->createFromRequest($this, $key);
+    }
+
+    /**
      * Add a remote file to the medialibrary.
      *
-     * @param $url
+     * @param string $url
      *
      * @return \Spatie\MediaLibrary\FileAdder\FileAdder
      *
-     * @throws \Spatie\MediaLibrary\Exceptions\UrlCouldNotBeOpened
+     * @throws \Spatie\MediaLibrary\Exceptions\FileCannotBeAdded
      */
-    public function addMediaFromUrl($url)
+    public function addMediaFromUrl(string $url)
     {
         if (!$stream = @fopen($url, 'r')) {
-            throw new UrlCouldNotBeOpened();
+            throw FileCannotBeAdded::unreachableUrl($url);
         }
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'media-library');
@@ -81,27 +105,23 @@ trait HasMediaTrait
         return $this->addMedia($file)->preservingOriginal();
     }
 
-    /**
+    /*
      * Determine if there is media in the given collection.
-     *
-     * @param $collectionName
-     *
-     * @return bool
      */
-    public function hasMedia($collectionName = '')
+    public function hasMedia(string $collectionName = '') : bool
     {
         return count($this->getMedia($collectionName)) ? true : false;
     }
 
-    /**
+    /*
      * Get media collection by its collectionName.
      *
      * @param string $collectionName
-     * @param array  $filters
+     * @param array|callable  $filters
      *
      * @return \Illuminate\Support\Collection
      */
-    public function getMedia($collectionName = '', $filters = [])
+    public function getMedia(string $collectionName = '', $filters = []) : Collection
     {
         return app(MediaRepository::class)->getCollection($this, $collectionName, $filters);
     }
@@ -112,26 +132,21 @@ trait HasMediaTrait
      * @param string $collectionName
      * @param array  $filters
      *
-     * @return bool|Media
+     * @return Media|null
      */
-    public function getFirstMedia($collectionName = 'default', $filters = [])
+    public function getFirstMedia(string $collectionName = 'default', array $filters = [])
     {
         $media = $this->getMedia($collectionName, $filters);
 
-        return count($media) ? $media->first() : false;
+        return $media->first();
     }
 
-    /**
+    /*
      * Get the url of the image for the given conversionName
      * for first media for the given collectionName.
      * If no profile is given, return the source's url.
-     *
-     * @param string $collectionName
-     * @param string $conversionName
-     *
-     * @return string
      */
-    public function getFirstMediaUrl($collectionName = 'default', $conversionName = '')
+    public function getFirstMediaUrl(string $collectionName = 'default', string $conversionName = '') : string
     {
         $media = $this->getFirstMedia($collectionName);
 
@@ -142,17 +157,12 @@ trait HasMediaTrait
         return $media->getUrl($conversionName);
     }
 
-    /**
+    /*
      * Get the url of the image for the given conversionName
      * for first media for the given collectionName.
      * If no profile is given, return the source's url.
-     *
-     * @param string $collectionName
-     * @param string $conversionName
-     *
-     * @return string
      */
-    public function getFirstMediaPath($collectionName = 'default', $conversionName = '')
+    public function getFirstMediaPath(string $collectionName = 'default', string $conversionName = '') : string
     {
         $media = $this->getFirstMedia($collectionName);
 
@@ -171,9 +181,9 @@ trait HasMediaTrait
      *
      * @return array
      *
-     * @throws \Spatie\MediaLibrary\Exceptions\MediaIsNotPartOfCollection
+     * @throws \Spatie\Medialibrary\Exceptions\MediaCannotBeUpdated
      */
-    public function updateMedia(array $newMediaArray, $collectionName = 'default')
+    public function updateMedia(array $newMediaArray, string $collectionName = 'default') : array
     {
         $this->removeMediaItemsNotPresentInArray($newMediaArray, $collectionName);
 
@@ -185,9 +195,7 @@ trait HasMediaTrait
             $currentMedia = $mediaClass::findOrFail($newMediaItem['id']);
 
             if ($currentMedia->collection_name != $collectionName) {
-                throw new MediaIsNotPartOfCollection(
-                    sprintf('Media id %s is not part of collection %s', $currentMedia->id, $collectionName)
-                );
+                throw MediaCannotBeUpdated::doesNotBelongToCollection($collectionName, $currentMedia);
             }
 
             if (array_key_exists('name', $newMediaItem)) {
@@ -212,13 +220,13 @@ trait HasMediaTrait
      * @param array  $newMediaArray
      * @param string $collectionName
      */
-    protected function removeMediaItemsNotPresentInArray(array $newMediaArray, $collectionName = 'default')
+    protected function removeMediaItemsNotPresentInArray(array $newMediaArray, string $collectionName = 'default')
     {
         $this->getMedia($collectionName, [])
-            ->filter(function ($currentMediaItem) use ($newMediaArray) {
+            ->filter(function (Media $currentMediaItem) use ($newMediaArray) {
                 return !in_array($currentMediaItem->id, collect($newMediaArray)->lists('id')->toArray());
             })
-            ->map(function ($media) {
+            ->map(function (Media $media) {
                 $media->delete();
             });
     }
@@ -230,14 +238,14 @@ trait HasMediaTrait
      *
      * @return $this
      */
-    public function clearMediaCollection($collectionName = 'default')
+    public function clearMediaCollection(string $collectionName = 'default')
     {
-        $this->getMedia($collectionName)->map(function ($media) {
+        $this->getMedia($collectionName)->map(function (Media $media) {
             app(Filesystem::class)->removeFiles($media);
             $media->delete();
         });
 
-        app(Dispatcher::class)->fire(new CollectionHasBeenCleared($this, $collectionName));
+        event(new CollectionHasBeenCleared($this, $collectionName));
 
         return $this;
     }
@@ -248,7 +256,7 @@ trait HasMediaTrait
      *
      * @param int|\Spatie\MediaLibrary\Media $mediaId
      *
-     * @throws \Spatie\MediaLibrary\Exceptions\MediaDoesNotBelongToModel
+     * @throws \Spatie\Medialibrary\Exceptions\MediaCannotBeDeleted
      */
     public function deleteMedia($mediaId)
     {
@@ -259,20 +267,16 @@ trait HasMediaTrait
         $media = $this->media->find($mediaId);
 
         if (!$media) {
-            throw new MediaDoesNotBelongToModel('Media id '.$mediaId.' does not belong to this model');
+            throw MediaCannotBeDeleted::doesNotBelongToModel($media, $this);
         }
 
         $media->delete();
     }
 
-    /**
+    /*
      * Add a conversion.
-     *
-     * @param string $name
-     *
-     * @return \Spatie\MediaLibrary\Conversion\Conversion
      */
-    public function addMediaConversion($name)
+    public function addMediaConversion(string $name) : Conversion
     {
         $conversion = Conversion::create($name);
 
@@ -282,31 +286,14 @@ trait HasMediaTrait
     }
 
     /**
-     * Delete the model. The extra logic isn't handled in a model event since the boot function is unreliable
-     * for currently unknown reasons.
-     *
-     * @return bool
-     */
-    public function delete()
-    {
-        if (!parent::delete()) {
-            return false;
-        }
-
-        $this->media()->get()->map(function ($media) {
-            $media->delete();
-        });
-
-        return true;
-    }
-
-    /**
      * Delete the model, but preserve all the associated media.
      *
      * @return bool
      */
-    public function deletePreservingMedia()
+    public function deletePreservingMedia() : bool
     {
-        return parent::delete();
+        $this->deletePreservingMedia = true;
+
+        return $this->delete();
     }
 }

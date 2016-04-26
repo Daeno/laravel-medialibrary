@@ -2,14 +2,12 @@
 
 namespace Spatie\MediaLibrary\Test\HasMediaTrait;
 
-use Spatie\MediaLibrary\Exceptions\FilesystemDoesNotExist;
+use Spatie\MediaLibrary\Exceptions\FileCannotBeAdded;
 use Spatie\MediaLibrary\Test\TestCase;
 
 class MultipleDiskTest extends TestCase
 {
-    /**
-     * @test
-     */
+    /** @test */
     public function it_can_add_a_file_to_a_named_collection_on_a_specific_disk()
     {
         $collectionName = 'images';
@@ -22,20 +20,17 @@ class MultipleDiskTest extends TestCase
         $this->assertFileExists($this->getTempDirectory('media2').'/'.$media->id.'/test.jpg');
     }
 
-    /**
-     * @test
-     */
+    /** @test */
     public function it_will_throw_an_exception_when_using_a_non_existing_disk()
     {
-        $this->setExpectedException(FileSystemDoesNotExist::class);
+        $this->expectException(FileCannotBeAdded::class);
+
         $this->testModel
             ->addMedia($this->getTestJpg())
             ->toCollectionOnDisk('images', 'diskdoesnotexist');
     }
 
-    /**
-     * @test
-     */
+    /** @test */
     public function it_can_save_derived_images_on_a_specific_disk()
     {
         $collectionName = 'images';
@@ -49,9 +44,7 @@ class MultipleDiskTest extends TestCase
         $this->assertFileExists($this->getTempDirectory('media2').'/'.$media->id.'/conversions/thumb.jpg');
     }
 
-    /**
-     * @test
-     */
+    /** @test */
     public function it_can_handle_generate_urls_to_media_on_an_alternative_disk()
     {
         $media = $this->testModelWithConversion

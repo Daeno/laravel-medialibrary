@@ -2,6 +2,35 @@
 
 All notable changes to `laravel-medialibrary` will be documented in this file
 
+##4.0.1 - 2016-04-25
+- Fixed queued jobs in Laravel 5.1
+
+##4.0.0 - 2016-04-13
+- add support for Glide 1.0
+- added `addMediaFromRequest` method
+- small refactors
+
+##3.17.4 - 2016-04-12
+- Only detect mimetype from file on local disks
+
+##3.17.3 - 2016-04-04
+- Fixed an issue that occured when deleting models with media in some php versions
+
+##3.17.2 - 2016-03-25
+- Fixed mistakes in the version contraints on the illuminate components
+
+##3.17.1 - 2016-03-24
+- Improved the file type detection for files without an extension
+
+##3.17.0 - 2016-03-23
+- Added support for `morphMap`
+
+##3.16.1 - 2016-03-20
+- Improved the compatiblity with packages that hook into the `delete` method of an Eloquent model
+
+##3.16.0
+- The `regenerate`-command now accepts an `ids`-option
+
 ##3.15.0
 - Added `medialibrary:clear` command
 

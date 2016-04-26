@@ -29,7 +29,7 @@ on images and pdfs that have been added in the medialibrary.
 Spatie is a webdesign agency in Antwerp, Belgium. You'll find an overview of all our open source projects [on our website](https://spatie.be/opensource).
 
 ## Documentation
-You'll find the documentation on [medialibrary.spatie.be](http://medialibrary.spatie.be).
+You'll find the documentation on [https://docs.spatie.be/laravel-medialibrary/v4](https://docs.spatie.be/laravel-medialibrary/v4).
 
 Find yourself stuck using the package? Found a bug? Do you have general questions or suggestions for improving the media library? Feel free to [create an issue on GitHub](https://github.com/spatie/laravel-medialibrary/issues), we'll try to address it as soon as possible.
 
@@ -38,11 +38,6 @@ If you've found a bug regarding security please mail [freek@spatie.be](mailto:fr
 ## Requirements
 To create derived images [GD](http://php.net/manual/en/book.image.php) should be installed on your server.
 For the creation of thumbnails of pdf's you should also install [Imagick](http://php.net/manual/en/imagick.setresolution.php).
-
-On Ubuntu you can install Imagick by issuing this command:
-```bash
-sudo apt-get install imagemagick php5-imagick
-``` 
 
 ## Installation
 

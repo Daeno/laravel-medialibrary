@@ -7,10 +7,6 @@ use Spatie\MediaLibrary\Test\TestCase;
 
 class GetTypeTest extends TestCase
 {
-    public function setUp()
-    {
-    }
-
     /**
      * @test
      * @dataProvider extensionProvider
@@ -22,7 +18,7 @@ class GetTypeTest extends TestCase
     {
         $media = new Media();
         $media->file_name = 'test.'.$extension;
-        $this->assertEquals($type, $media->type);
+        $this->assertEquals($type, $media->type_from_extension);
     }
 
     public static function extensionProvider()
@@ -46,5 +42,29 @@ class GetTypeTest extends TestCase
         }, $extensions);
 
         return array_merge($extensions, $capitalizedExtensions);
+    }
+
+    /**
+     * @test
+     * @dataProvider mimeProvider
+     *
+     * @param string $file
+     * @param string $type
+     */
+    public function it_can_determine_the_type_from_the_mime($file, $type)
+    {
+        $media = $this->testModel->addMedia($this->getTestFilesDirectory($file))->toMediaLibrary();
+        $this->assertEquals($type, $media->type_from_mime);
+    }
+
+    public static function mimeProvider()
+    {
+        return [
+            ['image', Media::TYPE_IMAGE],
+            ['test', Media::TYPE_OTHER],
+            ['test.jpg', Media::TYPE_IMAGE],
+            ['test.pdf', Media::TYPE_PDF],
+            ['test.txt', Media::TYPE_OTHER],
+        ];
     }
 }

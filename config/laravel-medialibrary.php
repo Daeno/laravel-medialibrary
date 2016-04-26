@@ -56,6 +56,6 @@ return [
          */
         'extra_headers' => [
             'CacheControl' => 'max-age=604800',
-        ]
-    ]
+        ],
+    ],
 ];

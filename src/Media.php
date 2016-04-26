@@ -3,7 +3,8 @@
 namespace Spatie\MediaLibrary;
 
 use Illuminate\Database\Eloquent\Model;
-use Spatie\MediaLibrary\Conversion\ConversionCollectionFactory;
+use Spatie\MediaLibrary\Conversion\Conversion;
+use Spatie\MediaLibrary\Conversion\ConversionCollection;
 use Spatie\MediaLibrary\Helpers\File;
 use Spatie\MediaLibrary\UrlGenerator\UrlGeneratorFactory;
 
@@ -18,10 +19,6 @@ class Media extends Model
     const TYPE_VIDEO = 'video';
 
     protected $guarded = ['id', 'disk', 'file_name', 'size', 'model_type', 'model_id'];
-
-    public $imageProfileUrls = [];
-
-    public $hasModifiedManipulations = false;
 
     /**
      * The attributes that should be casted to native types.
@@ -50,14 +47,14 @@ class Media extends Model
      *
      * @return string
      *
-     * @throws \Spatie\MediaLibrary\Exceptions\UnknownConversion
+     * @throws \Spatie\MediaLibrary\Exceptions\InvalidConversion
      */
-    public function getUrl($conversionName = '')
+    public function getUrl(string $conversionName = '') : string
     {
         $urlGenerator = UrlGeneratorFactory::createForMedia($this);
 
-        if ($conversionName != '') {
-            $urlGenerator->setConversion(ConversionCollectionFactory::createForMedia($this)->getByName($conversionName));
+        if ($conversionName !== '') {
+            $urlGenerator->setConversion(ConversionCollection::createForMedia($this)->getByName($conversionName));
         }
 
         return $urlGenerator->getUrl();
@@ -70,14 +67,14 @@ class Media extends Model
      *
      * @return string
      *
-     * @throws \Spatie\MediaLibrary\Exceptions\UnknownConversion
+     * @throws \Spatie\MediaLibrary\Exceptions\InvalidConversion
      */
-    public function getPath($conversionName = '')
+    public function getPath(string $conversionName = '') : string
     {
         $urlGenerator = UrlGeneratorFactory::createForMedia($this);
 
         if ($conversionName != '') {
-            $urlGenerator->setConversion(ConversionCollectionFactory::createForMedia($this)->getByName($conversionName));
+            $urlGenerator->setConversion(ConversionCollection::createForMedia($this)->getByName($conversionName));
         }
 
         return $urlGenerator->getPath();
@@ -89,6 +86,21 @@ class Media extends Model
      * @return string
      */
     public function getTypeAttribute()
+    {
+        $type = $this->type_from_extension;
+        if ($type !== self::TYPE_OTHER) {
+            return $type;
+        }
+
+        return $this->type_from_mime;
+    }
+
+    /**
+     * Determine the type of a file from its file extension.
+     *
+     * @return string
+     */
+    public function getTypeFromExtensionAttribute()
     {
         $extension = strtolower($this->extension);
 
@@ -111,38 +123,47 @@ class Media extends Model
         return static::TYPE_OTHER;
     }
 
-    /**
-     * @return string
+    /*
+     * Determine the type of a file from its mime type
      */
-    public function getExtensionAttribute()
+    public function getTypeFromMimeAttribute() : string
+    {
+        if ($this->getDiskDriverName() !== 'local') {
+            return static::TYPE_OTHER;
+        }
+
+        $mime = File::getMimetype($this->getPath());
+
+        if (in_array($mime, ['image/jpeg', 'image/gif', 'image/png'])) {
+            return static::TYPE_IMAGE;
+        }
+
+        if ($mime === 'application/pdf') {
+            return static::TYPE_PDF;
+        }
+
+        return static::TYPE_OTHER;
+    }
+
+    public function getExtensionAttribute() : string
     {
         return pathinfo($this->file_name, PATHINFO_EXTENSION);
     }
 
-    /**
-     * @return string
-     */
-    public function getHumanReadableSizeAttribute()
+    public function getHumanReadableSizeAttribute() : string
     {
         return File::getHumanReadableSize($this->size);
     }
 
-    /**
-     * @return string
-     */
-    public function getDiskDriverName()
+    public function getDiskDriverName() : string
     {
-        return config('filesystems.disks.'.$this->disk.'.driver');
+        return config("filesystems.disks.{$this->disk}.driver");
     }
 
-    /**
+    /*
      * Determine if the media item has a custom property with the given name.
-     *
-     * @param string $propertyName
-     *
-     * @return bool
      */
-    public function hasCustomProperty($propertyName)
+    public function hasCustomProperty(string $propertyName) : bool
     {
         return array_key_exists($propertyName, $this->custom_properties);
     }
@@ -151,21 +172,33 @@ class Media extends Model
      * Get if the value of custom property with the given name.
      *
      * @param string $propertyName
-     * @param mixed  $propertyName
+     * @param mixed  $default
      *
      * @return mixed
      */
-    public function getCustomProperty($propertyName, $default = null)
+    public function getCustomProperty(string $propertyName, $default = null)
     {
-        if (!$this->hasCustomProperty($propertyName)) {
-            return $default;
-        }
-
-        return $this->custom_properties[$propertyName];
+        return $this->custom_properties[$propertyName] ?? $default;
     }
 
-    public function setCustomProperty($name, $value)
+    /**
+     * @param string $name
+     * @param mixed  $value
+     */
+    public function setCustomProperty(string $name, $value)
     {
         $this->custom_properties = array_merge($this->custom_properties, [$name => $value]);
+    }
+
+    /*
+     * Get all the names of the registered media conversions.
+     */
+    public function getMediaConversionNames() : array
+    {
+        $conversions = ConversionCollection::createForMedia($this);
+
+        return $conversions->map(function (Conversion $conversion) {
+            return $conversion->getName();
+        })->toArray();
     }
 }

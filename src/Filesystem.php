@@ -3,7 +3,6 @@
 namespace Spatie\MediaLibrary;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Filesystem\Factory;
 use Spatie\MediaLibrary\Events\MediaHasBeenAdded;
 use Spatie\MediaLibrary\Helpers\File;
@@ -22,46 +21,31 @@ class Filesystem
     protected $config;
 
     /**
-     * @var \Illuminate\Contracts\Events\Dispatcher
+     * @param \Illuminate\Contracts\Filesystem\Factory $filesystems
+     * @param \Illuminate\Contracts\Config\Repository  $config
      */
-    protected $events;
-
-    /**
-     * @param Factory                                 $filesystems
-     * @param \Illuminate\Contracts\Config\Repository $config
-     */
-    public function __construct(Factory $filesystems, ConfigRepository $config, Dispatcher $events)
+    public function __construct(Factory $filesystems, ConfigRepository $config)
     {
         $this->filesystem = $filesystems;
         $this->config = $config;
-        $this->events = $events;
     }
 
-    /**
+    /*
      * Add a file to the mediaLibrary for the given media.
-     *
-     * @param string                     $file
-     * @param \Spatie\MediaLibrary\Media $media
-     * @param string                     $targetFileName
      */
-    public function add($file, Media $media, $targetFileName = '')
+    public function add(string $file, Media $media, string $targetFileName = '')
     {
         $this->copyToMediaLibrary($file, $media, false, $targetFileName);
 
-        $this->events->fire(new MediaHasBeenAdded($media));
+        event(new MediaHasBeenAdded($media));
 
         app(FileManipulator::class)->createDerivedFiles($media);
     }
 
-    /**
-     * Copy a file to the mediaLibrary for the given $media.
-     *
-     * @param string                     $file
-     * @param \Spatie\MediaLibrary\Media $media
-     * @param bool                       $conversions
-     * @param string                     $targetFileName
+    /*
+     * Copy a file to the medialibrary for the given $media.
      */
-    public function copyToMediaLibrary($file, Media $media, $conversions = false, $targetFileName = '')
+    public function copyToMediaLibrary(string $file, Media $media, bool $conversions = false, string $targetFileName = '')
     {
         $destination = $this->getMediaDirectory($media, $conversions).
             ($targetFileName == '' ? pathinfo($file, PATHINFO_BASENAME) : $targetFileName);
@@ -70,23 +54,21 @@ class Filesystem
             $this->filesystem
                 ->disk($media->disk)
                 ->put($destination, fopen($file, 'r+'));
-        } else {
-            $this->filesystem
-                ->disk($media->disk)
-                ->getDriver()
-                ->put($destination, fopen($file, 'r+'), $this->getRemoteHeadersForFile($file));
+
+            return;
         }
+
+        $this->filesystem
+            ->disk($media->disk)
+            ->getDriver()
+            ->put($destination, fopen($file, 'r+'), $this->getRemoteHeadersForFile($file));
     }
 
-    /**
+    /*
      * Get the headers to be used when copying the
      * given file to a remote filesytem.
-     *
-     * @param string $file
-     *
-     * @return array
      */
-    public function getRemoteHeadersForFile($file)
+    public function getRemoteHeadersForFile(string $file) : array
     {
         $mimeTypeHeader = ['ContentType' => File::getMimeType($file)];
 
@@ -95,13 +77,10 @@ class Filesystem
         return array_merge($mimeTypeHeader, $extraHeaders);
     }
 
-    /**
-     * Copy a file from the mediaLibrary to the given targetFile.
-     *
-     * @param \Spatie\MediaLibrary\Media $media
-     * @param string                     $targetFile
+    /*
+     * Copy a file from the medialibrary to the given targetFile.
      */
-    public function copyFromMediaLibrary(Media $media, $targetFile)
+    public function copyFromMediaLibrary(Media $media, string $targetFile)
     {
         $sourceFile = $this->getMediaDirectory($media).'/'.$media->file_name;
 
@@ -112,42 +91,29 @@ class Filesystem
         fclose($stream);
     }
 
-    /**
+    /*
      * Remove all files for the given media.
-     *
-     * @param \Spatie\MediaLibrary\Media $media
      */
     public function removeFiles(Media $media)
     {
         $this->filesystem->disk($media->disk)->deleteDirectory($this->getMediaDirectory($media));
     }
 
-    /**
+    /*
      * Rename a file for the given media.
-     *
-     * @param Media  $media
-     * @param string $oldName
-     *
-     * @return bool
      */
-    public function renameFile(Media $media, $oldName)
+    public function renameFile(Media $media, string $oldName)
     {
         $oldFile = $this->getMediaDirectory($media).'/'.$oldName;
         $newFile = $this->getMediaDirectory($media).'/'.$media->file_name;
 
         $this->filesystem->disk($media->disk)->move($oldFile, $newFile);
-
-        return true;
     }
 
-    /**
+    /*
      * Return the directory where all files of the given media are stored.
-     *
-     * @param \Spatie\MediaLibrary\Media $media
-     *
-     * @return string
      */
-    public function getMediaDirectory(Media $media, $conversion = false)
+    public function getMediaDirectory(Media $media, bool $conversion = false) : string
     {
         $pathGenerator = PathGeneratorFactory::create();
 

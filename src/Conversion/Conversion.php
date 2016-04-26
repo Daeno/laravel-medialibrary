@@ -26,38 +26,25 @@ class Conversion
      */
     protected $performOnQueue = true;
 
-    /**
-     * @param string $name
-     */
-    public function __construct($name)
+    public function __construct(string $name)
     {
         $this->name = $name;
     }
 
-    /**
-     * @param string $name
-     *
-     * @return static
-     */
-    public static function create($name)
+    public static function create(string $name)
     {
         return new static($name);
     }
 
-    /**
-     * @return string
-     */
-    public function getName()
+    public function getName() : string
     {
         return $this->name;
     }
 
     /**
      * Get the manipulations of this conversion.
-     *
-     * @return array
      */
-    public function getManipulations()
+    public function getManipulations() : array
     {
         $manipulations = $this->manipulations;
 
@@ -72,13 +59,13 @@ class Conversion
     /**
      * Set the manipulations for this conversion.
      *
-     * @param string $manipulations,...
+     * @param $manipulations
      *
      * @return $this
      */
-    public function setManipulations($manipulations)
+    public function setManipulations(...$manipulations)
     {
-        $this->manipulations = func_get_args();
+        $this->manipulations = $manipulations;
 
         return $this;
     }
@@ -100,26 +87,22 @@ class Conversion
     /**
      * Set the collection names on which this conversion must be performed.
      *
-     * @param string $collectionNames,...
+     * @param array $collectionNames
      *
      * @return $this
      */
-    public function performOnCollections($collectionNames)
+    public function performOnCollections(...$collectionNames)
     {
-        $this->performOnCollections = func_get_args();
+        $this->performOnCollections = $collectionNames;
 
         return $this;
     }
 
-    /**
+    /*
      * Determine if this conversion should be performed on the given
      * collection.
-     *
-     * @param string $collectionName
-     *
-     * @return bool
      */
-    public function shouldBePerformedOn($collectionName)
+    public function shouldBePerformedOn(string $collectionName) : bool
     {
         //if no collections were specified, perform conversion on all collections
         if (!count($this->performOnCollections)) {
@@ -157,24 +140,18 @@ class Conversion
         return $this;
     }
 
-    /**
+    /*
      * Determine if the conversion should be queued.
-     *
-     * @return bool
      */
-    public function shouldBeQueued()
+    public function shouldBeQueued() : bool
     {
         return $this->performOnQueue;
     }
 
-    /**
+    /*
      * Get the extension that the result of this conversion must have.
-     *
-     * @param string $originalFileExtension
-     *
-     * @return string
      */
-    public function getResultExtension($originalFileExtension = '')
+    public function getResultExtension(string $originalFileExtension = '') : string
     {
         return array_reduce($this->getManipulations(), function ($carry, array $manipulation) {
 
@@ -183,18 +160,18 @@ class Conversion
         }, $originalFileExtension);
     }
 
-    /**
+    /*
      * Determine if the given manipulations contain a format manipulation.
-     *
-     * @param array $manipulations
-     *
-     * @return mixed
      */
-    protected function containsFormatManipulation(array $manipulations)
+    protected function containsFormatManipulation(array $manipulations) : bool
     {
-        return array_reduce($manipulations, function ($carry, array $manipulation) {
-            return array_key_exists('fm', $manipulation) ? true : $carry;
-        }, false);
+        foreach ($manipulations as $manipulation) {
+            if (array_key_exists('fm', $manipulation)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -207,10 +184,10 @@ class Conversion
      *
      * @throws \Spatie\MediaLibrary\Exceptions\InvalidConversionParameter
      */
-    public function setWidth($width)
+    public function setWidth(int $width)
     {
-        if (!is_numeric($width) || $width < 1) {
-            throw new InvalidConversionParameter('width should be numeric and greater than 1');
+        if ($width < 1) {
+            throw InvalidConversionParameter::invalidWidth();
         }
 
         $this->setManipulationParameter('w', $width);
@@ -228,10 +205,10 @@ class Conversion
      *
      * @throws \Spatie\MediaLibrary\Exceptions\InvalidConversionParameter
      */
-    public function setHeight($height)
+    public function setHeight(int $height)
     {
-        if (!is_numeric($height) || $height < 1) {
-            throw new InvalidConversionParameter('height should be numeric and greater than 1');
+        if ($height < 1) {
+            throw InvalidConversionParameter::invalidHeight();
         }
 
         $this->setManipulationParameter('h', $height);
@@ -249,12 +226,12 @@ class Conversion
      *
      * @throws \Spatie\MediaLibrary\Exceptions\InvalidConversionParameter
      */
-    public function setFormat($format)
+    public function setFormat(string $format)
     {
         $validFormats = ['jpg', 'png', 'gif'];
 
         if (!in_array($format, $validFormats)) {
-            throw new InvalidConversionParameter($format.' is not a valid format.');
+            throw InvalidConversionParameter::invalidFormat($format, $validFormats);
         }
 
         $this->setManipulationParameter('fm', $format);
@@ -272,12 +249,27 @@ class Conversion
      *
      * @throws \Spatie\MediaLibrary\Exceptions\InvalidConversionParameter
      */
-    public function setFit($fit)
+    public function setFit(string $fit)
     {
-        $validFits = ['contain', 'max', 'stretch', 'crop'];
+        $validFits = [
+            'contain',
+            'max',
+            'fill',
+            'stretch',
+            'crop',
+            'crop-top-left',
+            'crop-top',
+            'crop-top-right',
+            'crop-left',
+            'crop-center',
+            'crop-right',
+            'crop-bottom-left',
+            'crop-bottom',
+            'crop-bottom-right',
+        ];
 
         if (!in_array($fit, $validFits)) {
-            throw new InvalidConversionParameter($fit.' is not a valid fit.');
+            throw InvalidConversionParameter::invalidFit($fit, $validFits);
         }
 
         $this->setManipulationParameter('fit', $fit);
@@ -286,8 +278,7 @@ class Conversion
     }
 
     /**
-     * Set the target rectangle.
-     * Matches with Glide's 'rect'-parameter.
+     * Crops the image to specific dimensions prior to any other resize operations.
      *
      * @param int $width
      * @param int $height
@@ -296,23 +287,17 @@ class Conversion
      *
      * @return $this
      *
-     * @throws InvalidConversionParameter
+     * @throws \Spatie\MediaLibrary\Exceptions\InvalidConversionParameter
      */
-    public function setRectangle($width, $height, $x, $y)
+    public function setCrop(int $width, int $height, int $x, int $y)
     {
-        foreach (compact('width', 'height', 'x', 'y') as $name => $value) {
-            if (!is_numeric($value)) {
-                throw new InvalidConversionParameter($name.' should be numeric');
-            }
-        }
-
         foreach (compact('width', 'height') as $name => $value) {
             if ($value < 1) {
-                throw new InvalidConversionParameter($name.' should be greater than 1');
+                throw InvalidConversionParameter::shouldBeGreaterThanOne($name, $value);
             }
         }
 
-        $this->setManipulationParameter('rect', sprintf('%s,%s,%s,%s', $width, $height, $x, $y));
+        $this->setManipulationParameter('crop', implode(',', [$width, $height, $x, $y]));
 
         return $this;
     }
@@ -325,19 +310,11 @@ class Conversion
      *
      * @return $this
      */
-    public function setManipulationParameter($name, $value)
+    public function setManipulationParameter(string $name, string $value)
     {
-        if (count($this->manipulations) == 0) {
-            $this->manipulations[0] = [];
-        };
+        $manipulation = array_pop($this->manipulations) ?: [];
 
-        $lastIndex = count($this->manipulations) - 1;
-
-        if (!isset($this->manipulations[$lastIndex])) {
-            $this->manipulations[$lastIndex] = [];
-        }
-
-        $this->manipulations[$lastIndex] = array_merge($this->manipulations[$lastIndex], [$name => $value]);
+        $this->manipulations[] = array_merge($manipulation, [$name => $value]);
 
         return $this;
     }

@@ -30,10 +30,7 @@ class PerformConversions extends Job implements SelfHandling, ShouldQueue
         $this->media = $media;
     }
 
-    /**
-     * @return bool
-     */
-    public function handle()
+    public function handle() : bool
     {
         app(FileManipulator::class)->performConversions($this->conversions, $this->media);
 
