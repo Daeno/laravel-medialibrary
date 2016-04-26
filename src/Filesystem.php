@@ -84,11 +84,13 @@ class Filesystem
     {
         $sourceFile = $this->getMediaDirectory($media).'/'.$media->file_name;
 
-        touch($targetFile);
+        $this->filesystem->disk($media->disk)->copy($sourceFile, $targetFile);
 
-        $stream = $this->filesystem->disk($media->disk)->readStream($sourceFile);
-        file_put_contents($targetFile, stream_get_contents($stream), FILE_APPEND);
-        fclose($stream);
+        // touch($targetFile);
+
+        // $stream = $this->filesystem->disk($media->disk)->readStream($sourceFile);
+        // file_put_contents($targetFile, stream_get_contents($stream), FILE_APPEND);
+        // fclose($stream);
     }
 
     /*
