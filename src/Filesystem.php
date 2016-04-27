@@ -84,13 +84,21 @@ class Filesystem
     {
         $sourceFile = $this->getMediaDirectory($media).'/'.$media->file_name;
 
-        $this->filesystem->disk($media->disk)->copy($sourceFile, $targetFile);
+        if ($media->getDiskDriverName() === 'local') {
+            $root = $this->config->get('filesystems.disks.'.$media->disk.'.root');
+            $sourcePath = $root.'/'.$sourceFile;
 
-        // touch($targetFile);
+            copy($sourcePath, $targetFile) or
+                die('COPY_FAILED. source:'.$sourceFile.', target:'.$targetFile);
 
-        // $stream = $this->filesystem->disk($media->disk)->readStream($sourceFile);
-        // file_put_contents($targetFile, stream_get_contents($stream), FILE_APPEND);
-        // fclose($stream);
+            return;
+        }
+
+        touch($targetFile);
+
+        $stream = $this->filesystem->disk($media->disk)->readStream($sourceFile);
+        file_put_contents($targetFile, stream_get_contents($stream), FILE_APPEND);
+        fclose($stream);
     }
 
     /*
