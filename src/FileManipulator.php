@@ -194,7 +194,7 @@ class FileManipulator
         );
 
         if (!file_exists($mp4File)) {
-            throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
+            throw new \Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
                 sprintf('Convert compressed MP4 failed. Input: %s, Output: %s',
                     $videoFile, $mp4File)
             );
@@ -205,7 +205,7 @@ class FileManipulator
         );
 
         if (!file_exists($thumbFile)) {
-            throw new Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
+            throw new \Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
                 sprintf('Convert MP4 thumbnail failed. Input: %s, Output: %s',
                     $videoFile, $thumbFile)
             );
