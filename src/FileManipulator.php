@@ -89,7 +89,7 @@ class FileManipulator
                     $error_msg = sprintf('Convert word to pdf failed.
                         Input: %s, Output: %s',
                         $copiedOriginalFile, $pdfFile);
-                    throw new \Spatie\MediaLibrary\Exceptions\FileDoesNotExist($error_msg);
+                    throw new \Exceptions($error_msg);
                 }
             }
 
