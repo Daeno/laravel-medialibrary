@@ -71,9 +71,9 @@ class FileManipulator
             $this->toCompressedMP4($copiedOriginalFile, $compressedMP4File, $thumbFile);
 
             app(Filesystem::class)->copyToMediaLibrary($compressedMP4File, $media, true, 'thumb.mp4');
-            app(Filesystem::class)->copyToMediaLibrary($thumbFile, $media, true, 'thumb.jpg');
-            File::deleteDirectory($tempDirectory);
-            return;
+
+            // Assign it back by thumbfile to do conversion below
+            $copiedOriginalFile = $thumbFile;
         }
 
         if ($media->type == Media::TYPE_WORD) {
@@ -89,7 +89,7 @@ class FileManipulator
                     $error_msg = sprintf('Convert word to pdf failed.
                         Input: %s, Output: %s',
                         $copiedOriginalFile, $pdfFile);
-                    throw new \Exceptions($error_msg);
+                    throw new \Exception($error_msg);
                 }
             }
 
@@ -194,7 +194,7 @@ class FileManipulator
         );
 
         if (!file_exists($mp4File)) {
-            throw new \Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
+            throw new \Exception(
                 sprintf('Convert compressed MP4 failed. Input: %s, Output: %s',
                     $videoFile, $mp4File)
             );
@@ -205,7 +205,7 @@ class FileManipulator
         );
 
         if (!file_exists($thumbFile)) {
-            throw new \Spatie\MediaLibrary\Exceptions\FileDoesNotExist(
+            throw new \Exception(
                 sprintf('Convert MP4 thumbnail failed. Input: %s, Output: %s',
                     $videoFile, $thumbFile)
             );
