@@ -28,6 +28,7 @@ class FileManipulator
         }
 
         if (($media->type == Media::TYPE_PDF || $media->type == Media::TYPE_WORD) && !class_exists('Imagick')) {
+            throw new \Exception('Imagick not installed.');
             return;
         }
 
@@ -76,7 +77,7 @@ class FileManipulator
             $copiedOriginalFile = $thumbFile;
         }
 
-        if ($media->type == Media::TYPE_WORD) {
+        if ($media->type == Media::TYPE_WORD || $media->type == Media::TYPE_PPT) {
             $pdfFile = $tempDirectory.'/thumb.pdf';
 
             // Less than 1kb than failed

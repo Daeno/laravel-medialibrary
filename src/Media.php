@@ -14,9 +14,10 @@ class Media extends Model
 
     const TYPE_OTHER = 'other';
     const TYPE_IMAGE = 'image';
-    const TYPE_WORD = 'ms word';
+    const TYPE_WORD = 'word';
     const TYPE_PDF = 'pdf';
     const TYPE_VIDEO = 'video';
+    const TYPE_PPT = 'ppt';
 
     protected $guarded = ['id', 'disk', 'file_name', 'size', 'model_type', 'model_id'];
 
@@ -104,6 +105,11 @@ class Media extends Model
     {
         $extension = strtolower($this->extension);
 
+        return $this->getTypeFromExtension($extension);
+    }
+
+    public static function getTypeFromExtension($extension)
+    {
         if (in_array($extension, ['png', 'jpg', 'jpeg', 'gif'])) {
             return static::TYPE_IMAGE;
         }
@@ -118,6 +124,10 @@ class Media extends Model
 
         if(in_array($extension, ['mp4', 'mov', 'wmv', 'mpg', 'avi', 'mpeg'])) {
             return static::TYPE_VIDEO;
+        }
+
+        if (in_array($extension, ['ppt', 'pptx'])) {
+            return static::TYPE_PPT;
         }
 
         return static::TYPE_OTHER;
