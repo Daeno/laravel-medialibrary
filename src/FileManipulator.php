@@ -57,7 +57,9 @@ class FileManipulator
 
         $tempDirectory = $this->createTempDirectory();
 
-        $copiedOriginalFile = $tempDirectory.'/'.str_random(16).'.'.$media->extension;
+        $tempFilename = $tempDirectory.'/'.str_random(16);
+
+        $copiedOriginalFile = $tempFilename.'.'.$media->extension;
 
         app(Filesystem::class)->copyFromMediaLibrary($media, $copiedOriginalFile);
 
@@ -78,20 +80,21 @@ class FileManipulator
         }
 
         if ($media->type == Media::TYPE_WORD || $media->type == Media::TYPE_PPT) {
-            $pdfFile = $tempDirectory.'/thumb.pdf';
+            $pdfFile = $tempFilename.'.pdf';
 
             // Less than 1kb than failed
-            for ($i = 0; (!file_exists($pdfFile) || File::size($pdfFile) < 1000) && $i < 10; $i++) {
-                $this->convertWordToPDF($copiedOriginalFile, $pdfFile);
+            for ($i = 0; (!file_exists($pdfFile) || File::size($pdfFile) < 1000); $i++) {
+                if ($i == 3) {
+                    $errorMsg = "Convert word to pdf failed.
+                        Input: {$copiedOriginalFile}, Output: {$pdfFile}";
+                    throw new \Exception($errorMsg);
+                }
+
                 if ($i > 0) {
-                    sleep(5);
+                    sleep(10);
                 }
-                if ($i == 9) {
-                    $error_msg = sprintf('Convert word to pdf failed.
-                        Input: %s, Output: %s',
-                        $copiedOriginalFile, $pdfFile);
-                    throw new \Exception($error_msg);
-                }
+
+                $this->convertWordToPDF($copiedOriginalFile);
             }
 
             app(Filesystem::class)->copyToMediaLibrary($pdfFile, $media, true, 'thumb.pdf');
@@ -168,11 +171,13 @@ class FileManipulator
      *
      * @return string
      */
-    protected function convertWordToPDF($wordFile, $pdfFile)
+    protected function convertWordToPDF($wordFile)
     {
         $file_name_fpath = realpath($wordFile);
 
-        exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile);
+        print_r( exec("unoconv -vvvv -f pdf {$file_name_fpath}") );
+
+        // exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile);
     }
 
     /**
