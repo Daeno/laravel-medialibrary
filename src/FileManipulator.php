@@ -299,12 +299,12 @@ class FileManipulator
             .  ' > /dev/null 2> /dev/null'
         );
 
-        if (!file_exists($thumbFile)) {
-            throw new \Exception(
-                sprintf('Convert MP4 thumbnail failed. Input: %s, Output: %s',
-                    $videoFile, $thumbFile)
-            );
-        }
+        // if (!file_exists($thumbFile)) {
+        //     throw new \Exception(
+        //         sprintf('Convert MP4 thumbnail failed. Input: %s, Output: %s',
+        //             $videoFile, $thumbFile)
+        //     );
+        // }
     }
 
     /**
