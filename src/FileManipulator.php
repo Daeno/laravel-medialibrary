@@ -75,6 +75,16 @@ class FileManipulator
 
             app(Filesystem::class)->copyToMediaLibrary($compressedMP4File, $media, true, 'thumb.mp4');
 
+            // Accept no thumbnail
+            if (!file_exists($thumbFile)) {
+                foreach ($conversions as $conversion) {
+                    event(new ConversionHasBeenCompleted($media, $conversion));
+                }
+
+                File::deleteDirectory($tempDirectory);
+                return;
+            }
+
             // Assign it back by thumbfile to do conversion below
             $copiedOriginalFile = $thumbFile;
         }
@@ -95,7 +105,7 @@ class FileManipulator
                     sleep(6);
                 }
 
-                $this->convertWordToPDF($copiedOriginalFile);
+                $this->convertWordToPDF($copiedOriginalFile, $pdfFile);
             }
 
             app(Filesystem::class)->copyToMediaLibrary($pdfFile, $media, true, 'thumb.pdf');
@@ -172,101 +182,33 @@ class FileManipulator
      *
      * @return string
      */
-    protected function convertWordToPDF($wordFile)
+    protected function convertWordToPDF($wordFile, $pdfFile)
     {
         $file_name_fpath = realpath($wordFile);
 
-        // echo exec("/usr/bin/sudo /usr/bin/unoconv -f pdf {$file_name_fpath}");
-
-        $this->psExecuteWithTimeoutAndLock("unoconv -f pdf {$file_name_fpath}", 20);
+        $this->psExecuteWithLock(
+            'curl --form file=@'.$file_name_fpath.
+            ' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile
+        );
 
         echo "... Finish executing \n"; ob_flush();
-        // print_r( exec("timeout -s 9 2 bash -c 'unoconv -vvvv -f pdf {$file_name_fpath}'") );
-
-        // exec('curl --form file=@'.$file_name_fpath.' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile);
     }
 
-    protected function psExecuteWithTimeoutAndLock($command, $timeout = 60, $sleep = 1.5)
+    protected function psExecuteWithLock($command)
     {
         $lock_path = storage_path('lock/unoconv.lock');
-        $lock = fopen($lock_path, "w+") or die("Unable to open lock file!");;
+        $lock = fopen($lock_path, "w+") or die("Unable to open lock file!");
 
         while(!flock($lock, LOCK_EX|LOCK_NB)) {
-            echo "... Check process exists. Wait 5 seconds. \n"; ob_flush();
-            sleep(5);
+            echo "... Check process exists. Wait 2 seconds. \n"; ob_flush();
+            sleep(2);
         }
 
         try {
-            return $this->psExecuteWithTimeout($command, $timeout, $sleep);
+            exec($command);
         } finally {
             flock($lock, LOCK_UN);
         }
-    }
-
-    protected function psExecuteWithTimeout($command, $timeout, $sleep)
-    {
-        // First, execute the process, get the process ID
-        $pid = $this->psExec($command);
-
-        // Execute failed... unlock the file
-        if( $pid === false ) {
-            return false;
-        }
-
-        $cur = 0;
-        // Second, loop for $timeout seconds checking if process is running
-        while( $cur < $timeout ) {
-            sleep($sleep);
-            $cur += $sleep;
-            // If process is no longer running, return true;
-
-            echo "... $cur seconds waiting \n"; ob_flush();
-
-            if( !$this->psExists($pid) ) {
-                return true; // Process must have exited, success!
-            }
-        }
-
-        // If process is still running after timeout, kill the process and return false
-        $this->psKill($pid);
-        return false;
-    }
-
-    protected function psExec($commandJob) {
-
-        $command = $commandJob.' > /dev/null 2>&1 & echo $!';
-
-        exec($command, $op);
-
-        echo "...After exeuting\n"; ob_flush();
-
-        $pid = (int)$op[0];
-
-        if ($pid != "") return $pid;
-
-        return false;
-    }
-
-    protected function psExists($pid) {
-
-        exec("ps ax | grep $pid 2>&1", $output);
-
-        while( list(,$row) = each($output) ) {
-
-            $row_array = explode(" ", $row);
-            $check_pid = $row_array[0];
-
-            if($pid == $check_pid) {
-                return true;
-            }
-
-        }
-
-        return false;
-    }
-
-    protected function psKill($pid) {
-        exec("kill -9 $pid", $output);
     }
 
     /**
