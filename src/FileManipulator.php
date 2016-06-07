@@ -101,7 +101,7 @@ class FileManipulator
                 }
 
                 if ($i > 0) {
-                    echo "... Try again for {$pdfFile} at {$i} times... \n"; ob_flush();
+                    // echo "... Try again for {$pdfFile} at {$i} times... \n"; ob_flush();
                     sleep(6);
                 }
 
@@ -191,7 +191,7 @@ class FileManipulator
             ' http://'.config('laravel-medialibrary.unoconv_url').' > '.$pdfFile
         );
 
-        echo "... Finish executing \n"; ob_flush();
+        // echo "... Finish executing \n"; ob_flush();
     }
 
     protected function psExecuteWithLock($command)
@@ -200,7 +200,7 @@ class FileManipulator
         $lock = fopen($lock_path, "w+") or die("Unable to open lock file!");
 
         while(!flock($lock, LOCK_EX|LOCK_NB)) {
-            echo "... Check process exists. Wait 2 seconds. \n"; ob_flush();
+            // echo "... Check process exists. Wait 2 seconds. \n"; ob_flush();
             sleep(2);
         }
 
@@ -224,9 +224,10 @@ class FileManipulator
          * -crf to compress it. 0 is loseless, 51 is worst, 23 is default. The lower the better.
          * -b:v 512k: Use bit rates as 512k to compress.
          * -c:a aac: use aac codec (compress suitable codec).
+         * -s 480x320: to cut video to smaller size (most effective way to reduce size)
          * See http://stackoverflow.com/questions/4490154/reducing-video-size-with-same-format-and-reducing-frame-size
          */
-        exec('ffmpeg -y -i '.$videoFile.' -c:v libx264 -crf 24 -b:v 128k -b:a 64k -c:a aac '.$mp4File
+        exec('ffmpeg -y -i '.$videoFile.' -c:v libx264 -crf 24 -c:a aac -s 480x320 -b:a 128k '.$mp4File
             .  ' > /dev/null 2> /dev/null'
         );
 
