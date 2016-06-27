@@ -18,6 +18,7 @@ class Media extends Model
     const TYPE_PDF = 'pdf';
     const TYPE_VIDEO = 'video';
     const TYPE_PPT = 'ppt';
+    const TYPE_AUDIO = 'audio';
 
     protected $guarded = ['id', 'disk', 'file_name', 'size', 'model_type', 'model_id'];
 
@@ -128,6 +129,10 @@ class Media extends Model
 
         if (in_array($extension, ['ppt', 'pptx'])) {
             return static::TYPE_PPT;
+        }
+
+        if (in_array($extension, ['mp3', 'wma', 'wav'])) {
+            return static::TYPE_AUDIO;
         }
 
         return static::TYPE_OTHER;
