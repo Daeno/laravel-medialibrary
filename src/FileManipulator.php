@@ -67,6 +67,21 @@ class FileManipulator
             $copiedOriginalFile = $this->convertPDFToImage($copiedOriginalFile);
         }
 
+        if ($media->type == Media::TYPE_AUDIO) {
+            $compressedMP3File = $tempDirectory.'/thumb.mp3';
+
+            $this->convertToMP3($copiedOriginalFile, $compressedMP3File);
+            app(Filesystem::class)->copyToMediaLibrary($compressedMP3File, $media, true, 'thumb.mp3');
+
+            // No thumbnail
+            foreach ($conversions as $conversion) {
+                event(new ConversionHasBeenCompleted($media, $conversion));
+            }
+
+            File::deleteDirectory($tempDirectory);
+            return;
+        }
+
         if ($media->type == Media::TYPE_VIDEO) {
             $compressedMP4File = $tempDirectory.'/thumb.mp4';
             $thumbFile = $tempDirectory.'/thumb.jpg';
@@ -248,6 +263,19 @@ class FileManipulator
         //             $videoFile, $thumbFile)
         //     );
         // }
+    }
+
+    protected function convertToMP3($audioFile, $mp3File)
+    {
+        exec('ffmpeg -y -i '.$audioFile.' '.$mp3File
+            .  ' > /dev/null 2> /dev/null'
+        );
+
+        if (!file_exists($mp3File)) {
+            throw new \Exception(
+                "Convert to mp3 failed. Input: {$audioFile}, Output: {$mp3File}"
+            );
+        }
     }
 
     /**
